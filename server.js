@@ -8,6 +8,7 @@ var session = require('express-session');
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 
+
 // SHOW SCHEMA
 var showSchema = new mongoose.Schema({
     _id: Number,
@@ -210,6 +211,16 @@ app.post('/api/shows', function(req, res, next) {
     });
 });
 
+passport.serializeUser(function(user, done) {
+    done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done) {
+    User.findById(id, function(err, user) {
+        done(err, user);
+    });
+});
+
 // ADD PASSPORT AUTHENTICATION STRATEGY
 passport.use(new LocalStrategy({ usernameField: 'email' }, function(email, password, done) {
     User.findOne({ email: email }, function(err, user) {
@@ -245,6 +256,31 @@ app.post('/api/signup', function(req, res, next) {
 app.get('/api/logout', function(req, res, next) {
     req.logout();
     res.send(200);
+});
+
+// SUBSCRIBE ROUTE
+app.post('/api/subscribe', ensureAuthenticated, function(req, res, next) {
+    Show.findById(req.body.showId, function(err, show) {
+        if (err) return next(err);
+        show.subscribers.push(req.user.id);
+        show.save(function(err) {
+            if (err) return next(err);
+            res.send(200);
+        });
+    });
+});
+
+// UNSUBSCRIBE ROUTE
+app.post('/api/unsubscribe', ensureAuthenticated, function(req, res, next) {
+    Show.findById(req.body.showId, function(err, show) {
+        if (err) return next(err);
+        var index = show.subscribers.indexOf(req.user.id);
+        show.subscribers.splice(index, 1);
+        show.save(function(err) {
+            if (err) return next(err);
+            res.send(200);
+        });
+    });
 });
 
 
